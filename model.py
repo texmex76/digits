@@ -7,10 +7,10 @@ from sklearn.model_selection import train_test_split
 from keras.utils.np_utils import to_categorical
 from keras.callbacks import ReduceLROnPlateau
 from keras.preprocessing.image import ImageDataGenerator
-from keras.layers import Dense, Activation, Dropout
+from keras.layers import Dense, Activation, Dropout, Conv2D, \
+                         MaxPooling2D, Flatten
 from keras.models import Sequential
 from keras.optimizers import Adam, RMSprop
-from keras.layers import Flatten
 
 df = pd.read_csv('train.csv')
 m = df.shape[0]
@@ -25,25 +25,15 @@ X_train, X_val, Y_train, Y_val = train_test_split(X_train, Y_train,
   test_size = 0.1, random_state=random_seed)
 
 model = Sequential([
-  Flatten(input_shape=(28,28,1)),
-  Dense(512, input_shape=df.shape[1:]),
-  Activation('relu'),
-  Dense(512),
+  Conv2D(30, (5, 5), input_shape=(28, 28, 1), activation='relu'),
+  MaxPooling2D(pool_size=(2, 2)),
+  Conv2D(15, (3, 3), activation='relu'),
+  MaxPooling2D(pool_size=(2, 2)),
   Dropout(0.2),
-  Activation('relu'),
-  Dense(512),
-  Activation('relu'),
-  Dense(256),
-  Dropout(0.2),
-  Activation('relu'),
-  Dense(128),
-  Activation('relu'),
-  Dense(64),
-  Activation('relu'),
-  Dense(32),
-  Activation('relu'),
-  Dense(10),
-  Activation('softmax'),
+  Flatten(),
+  Dense(128, activation='relu'),
+  Dense(50, activation='relu'),
+  Dense(10, activation='softmax'),
 ])
 
 # opt = Adam(lr=0.01, beta_1=0.9, beta_2=0.999, decay=0.01)
@@ -60,7 +50,7 @@ datagen.fit(X_train)
 
 # Learning rate reduction
 lrr = ReduceLROnPlateau(monitor='val_categorical_accuracy', 
-                        patience=1, 
+                        patience=2, 
                         verbose=1, 
                         factor=0.5, 
                         min_lr=0.00001)
