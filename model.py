@@ -5,11 +5,11 @@ from scipy.misc import toimage
 from sklearn.model_selection import train_test_split
 
 from keras.utils.np_utils import to_categorical
-from keras.callbacks import EarlyStopping
+from keras.callbacks import ReduceLROnPlateau
 from keras.preprocessing.image import ImageDataGenerator
-from keras.layers import Dense, Activation
+from keras.layers import Dense, Activation, Dropout
 from keras.models import Sequential
-from keras.optimizers import Adam
+from keras.optimizers import Adam, RMSprop
 from keras.layers import Flatten
 
 df = pd.read_csv('train.csv')
@@ -26,9 +26,19 @@ X_train, X_val, Y_train, Y_val = train_test_split(X_train, Y_train,
 
 model = Sequential([
   Flatten(input_shape=(28,28,1)),
-  Dense(32, input_shape=df.shape[1:]),
+  Dense(512, input_shape=df.shape[1:]),
   Activation('relu'),
-  Dense(32),
+  Dense(512),
+  Dropout(0.2),
+  Activation('relu'),
+  Dense(512),
+  Activation('relu'),
+  Dense(256),
+  Dropout(0.2),
+  Activation('relu'),
+  Dense(128),
+  Activation('relu'),
+  Dense(64),
   Activation('relu'),
   Dense(32),
   Activation('relu'),
@@ -36,7 +46,8 @@ model = Sequential([
   Activation('softmax'),
 ])
 
-opt = Adam(lr=0.01, beta_1=0.9, beta_2=0.999, decay=0.01)
+# opt = Adam(lr=0.01, beta_1=0.9, beta_2=0.999, decay=0.01)
+opt = RMSprop(lr=0.001, rho=0.9, epsilon=1e-08, decay=0.0)
 model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['categorical_accuracy'])
 
 datagen = ImageDataGenerator(
@@ -47,11 +58,16 @@ datagen = ImageDataGenerator(
 
 datagen.fit(X_train)
 
-esm = EarlyStopping(patience=3)
-# history = model.fit(X, Y, batch_size=42, validation_split=0.3, epochs=50, callbacks=[esm])
+# Learning rate reduction
+lrr = ReduceLROnPlateau(monitor='val_categorical_accuracy', 
+                        patience=1, 
+                        verbose=1, 
+                        factor=0.5, 
+                        min_lr=0.00001)
+
 history = model.fit_generator(datagen.flow(X_train, Y_train, batch_size=42),
-  epochs=10, steps_per_epoch=m/42, validation_data = (X_val,Y_val),
-  callbacks=[esm])
+  epochs=30, steps_per_epoch=m/42, validation_data = (X_val,Y_val),
+  callbacks=[lrr])
 
 model.save_weights('digits_crossentropy.h5')
 
